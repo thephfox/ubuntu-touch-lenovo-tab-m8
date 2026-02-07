@@ -3,7 +3,7 @@
 [![Device](https://img.shields.io/badge/Device-Lenovo%20Tab%20M8%20HD-blue)](https://www.lenovo.com)
 [![OS](https://img.shields.io/badge/OS-Ubuntu%20Touch%20Noble-orange)](https://ubports.com)
 [![SoC](https://img.shields.io/badge/SoC-MediaTek%20Helio%20A22-green)](https://www.mediatek.com)
-[![License](https://img.shields.io/badge/License-GPL--2.0-red)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 Performance-optimized Ubuntu Touch build for the **Lenovo Tab M8 HD (TB-8505F)** with MediaTek Helio A22 (MT8166B) SoC.
 
@@ -152,6 +152,16 @@ See [`docs/KNOWN_ISSUES.md`](docs/KNOWN_ISSUES.md) for the full list. Key issues
 
 ---
 
+## ⚠️ Disclaimer
+
+This software interacts with low-level device hardware including bootloader partitions, kernel parameters, and system services. **Improper use may render your device unbootable or cause data loss.** The author(s) are **not responsible** for any damage to devices, computers, data, or any other property. **Use entirely at your own risk.**
+
+---
+
 ## 📄 License
 
-This project is licensed under the [GNU General Public License v2.0](LICENSE), consistent with the Linux kernel and Ubuntu Touch licensing.
+This project is licensed under the [MIT License](LICENSE) with an **attribution requirement**.
+
+You are free to use, modify, and distribute this code for any purpose. If you use any part of this project, please credit **[thephfox](https://phfox.com)** in your project documentation, README, or source code comments.
+
+See [LICENSE](LICENSE) for full terms.

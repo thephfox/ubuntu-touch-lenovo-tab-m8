@@ -61,4 +61,4 @@ adb shell "echo PASSWORD | sudo -S sh /tmp/verify.sh"
 - All files must include a header comment explaining purpose and usage
 
 ## License
-All contributions must be compatible with GPL-2.0.
+All contributions must be compatible with the [MIT License](../LICENSE). By contributing, you agree that your work will be licensed under the same terms, including the attribution requirement to credit **thephfox** (https://phfox.com).
