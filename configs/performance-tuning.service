@@ -1,0 +1,61 @@
+# Performance Tuning Service for Lenovo Tab M8 HD (TB-8505F)
+# Applies CPU, memory, I/O, and network optimizations at boot
+#
+# Install:
+#   sudo cp performance-tuning.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable performance-tuning.service
+
+[Unit]
+Description=Performance tuning for Lenovo Tab M8
+After=local-fs.target home.mount
+Requires=home.mount
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# I/O scheduler: deadline for eMMC, disable iostats for lower overhead
+# CPU: set 1056 MHz floor via MTK perfmgr, enable PPM SYS_BOOST
+# EAS: boost top-app 10%, foreground 5%
+# Scheduler: reduce migration cost for better single-core perf
+# Network: CUBIC TCP (better than default BIC for most use cases)
+# Memory: conservative dirty ratios for 2GB device, 16MB min_free_kbytes
+# Bind mounts: move apt cache and logs to /home to save root partition space
+ExecStart=/bin/sh -c "\
+echo deadline > /sys/block/mmcblk0/queue/scheduler; \
+echo 256 > /sys/block/mmcblk0/queue/read_ahead_kb; \
+echo 0 > /sys/block/mmcblk0/queue/iostats; \
+echo 0 > /sys/block/mmcblk0/queue/add_random; \
+echo 7 > /proc/sys/kernel/printk; \
+echo '1056000 -1' > /proc/perfmgr/boost_ctrl/cpu_ctrl/perfserv_freq; \
+echo '9 1' > /proc/ppm/policy_status; \
+echo 10 > /proc/perfmgr/boost_ctrl/eas_ctrl/perfserv_ta_boost; \
+echo 5 > /proc/perfmgr/boost_ctrl/eas_ctrl/perfserv_fg_boost; \
+echo 100000 > /proc/sys/kernel/sched_migration_cost_ns; \
+echo 6000000 > /proc/sys/kernel/sched_latency_ns; \
+echo 1500000 > /proc/sys/kernel/sched_min_granularity_ns; \
+echo 1500000 > /proc/sys/kernel/sched_wakeup_granularity_ns; \
+echo cubic > /proc/sys/net/ipv4/tcp_congestion_control; \
+echo 16384 > /proc/sys/vm/min_free_kbytes; \
+echo 3 > /proc/sys/vm/page-cluster; \
+echo 30 > /proc/sys/vm/swappiness; \
+echo 50 > /proc/sys/vm/vfs_cache_pressure; \
+echo 15 > /proc/sys/vm/dirty_ratio; \
+echo 5 > /proc/sys/vm/dirty_background_ratio; \
+echo 1500 > /proc/sys/vm/dirty_writeback_centisecs; \
+echo 3000 > /proc/sys/vm/dirty_expire_centisecs; \
+mkdir -p /home/.system/apt-cache /home/.system/log; \
+mount --bind /home/.system/apt-cache /var/cache/apt; \
+mount --bind /home/.system/log /var/log; \
+"
+
+# Re-apply scheduler settings after 10s (MTK daemons may override them)
+ExecStartPost=/bin/sh -c "sleep 10; \
+echo 100000 > /proc/sys/kernel/sched_migration_cost_ns; \
+echo 1500000 > /proc/sys/kernel/sched_min_granularity_ns; \
+echo 1500000 > /proc/sys/kernel/sched_wakeup_granularity_ns; \
+"
+
+[Install]
+WantedBy=multi-user.target

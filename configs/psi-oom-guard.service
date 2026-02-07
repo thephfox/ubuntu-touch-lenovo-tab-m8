@@ -1,0 +1,24 @@
+# PSI-based OOM Guard for Lenovo Tab M8 HD (TB-8505F)
+# Monitors memory pressure via /proc/pressure/memory and proactively
+# kills the largest non-essential process before the system freezes.
+# Essential for 2GB RAM devices where OOM situations are common.
+#
+# Install:
+#   sudo cp ../scripts/psi-oom-guard.sh /usr/local/bin/
+#   sudo chmod +x /usr/local/bin/psi-oom-guard.sh
+#   sudo cp psi-oom-guard.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable psi-oom-guard.service
+
+[Unit]
+Description=PSI-based OOM Guard
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/psi-oom-guard.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

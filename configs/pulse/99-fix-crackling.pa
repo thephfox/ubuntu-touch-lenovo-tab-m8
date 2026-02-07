@@ -1,0 +1,14 @@
+# PulseAudio module configuration to fix audio crackling
+# on MediaTek Helio A22 (MT8166B) audio codec
+#
+# The crackling is caused by timer-based scheduling (tsched)
+# not working well with the MT8166 ALSA driver. Disabling tsched
+# forces interrupt-based scheduling which is more reliable.
+#
+# Install:
+#   sudo cp 99-fix-crackling.pa /etc/pulse/default.pa.d/
+
+.ifexists module-udev-detect.so
+unload-module module-udev-detect
+load-module module-udev-detect tsched=0
+.endif

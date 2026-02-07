@@ -1,0 +1,25 @@
+# Framebuffer Boot Status Display for Lenovo Tab M8 HD (TB-8505F)
+# Renders systemd boot progress directly to /dev/fb0 (800x1280, 32bpp RGBA)
+# Workaround for kernel compiled without CONFIG_FRAMEBUFFER_CONSOLE
+#
+# Shows green "[ OK ]" lines as services start, red for failures.
+# Automatically exits when LightDM/compositor takes over the display.
+#
+# Install:
+#   sudo cp ../scripts/boot_status.py /usr/local/bin/
+#   sudo chmod +x /usr/local/bin/boot_status.py
+#   sudo cp boot-status-display.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable boot-status-display.service
+
+[Unit]
+Description=Boot Status Framebuffer Display
+After=systemd-journald.service
+Before=lightdm.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/bin/boot_status.py
+
+[Install]
+WantedBy=graphical.target

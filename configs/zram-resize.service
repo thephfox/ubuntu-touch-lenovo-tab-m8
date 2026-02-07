@@ -1,0 +1,20 @@
+# zRAM Resize Service for Lenovo Tab M8 HD (TB-8505F)
+# Increases zRAM from default 1GB to 1.5GB with LZ4 compression
+# Critical for 2GB RAM devices — more compressed swap = more effective RAM
+#
+# Install:
+#   sudo cp zram-resize.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable zram-resize.service
+
+[Unit]
+Description=Resize zRAM to 1.5GB with LZ4 compression
+After=zram-touch.service
+Requires=zram-touch.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'swapoff /dev/zram0; echo 1 > /sys/block/zram0/reset; echo lz4 > /sys/block/zram0/comp_algorithm; echo 1610612736 > /sys/block/zram0/disksize; mkswap /dev/zram0; swapon /dev/zram0'
+
+[Install]
+WantedBy=multi-user.target
