@@ -2,11 +2,12 @@
 
 ## Upstream Issues (Original Port by k.nacke)
 
-### 🔴 Missing/Blank Characters in UI Text
-- **Status**: Unresolved upstream
-- **Description**: Some characters appear blank or missing in the Lomiri UI, especially after upgrading to Noble (24.04). The issue is related to font rendering with the Ubuntu variable font and `Font.Light` weight in the Maliit keyboard and other QML components.
-- **Workaround**: None confirmed. May be related to Qt font rendering with variable fonts.
-- **Affects**: All users
+### ✅ Missing/Blank Characters in UI Text
+- **Status**: **Fixed in this project** (v2.1.0)
+- **Description**: Some characters appear blank or missing in the Lomiri UI. Caused by Ubuntu Noble (24.04) shipping a fontconfig rule (`71-ubuntulegacy.conf`) that rejects all classic static Ubuntu font files in favor of variable fonts — but the variable fonts were never installed on this device, leaving only 2 of 15 font faces registered.
+- **Root cause**: `71-ubuntulegacy.conf` rejects `Ubuntu-R.ttf`, `Ubuntu-B.ttf`, `Ubuntu-M.ttf`, etc. Plus 4 broken UbuntuMono symlinks pointing to missing variable font files.
+- **Fix**: `scripts/fix_fonts.sh` removes the reject rule, replaces broken UbuntuMono symlinks with classic static fonts, and rebuilds the fontconfig cache. Restores all 11 Ubuntu + 4 UbuntuMono font faces.
+- **Affects**: All Ubuntu Touch Noble users on this device
 
 ### 🟡 Audio Crackling from Speakers and Headphones
 - **Status**: **Mitigated in this project**

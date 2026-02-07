@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 Format follows [Semantic Versioning](https://semver.org/) and [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.1.0] - 2026-02-07
+
+### Fixed
+- **Missing/blank characters in UI** — Root cause identified: Ubuntu Noble's `71-ubuntulegacy.conf` fontconfig rule rejects all classic static Ubuntu font files in favor of variable fonts that were never installed. Only 2 of 15 font faces were registered, causing blank glyphs when QML requests Bold, Medium, Thin, or Mono weights.
+- **Broken UbuntuMono symlinks** — 4 symlinks pointed to missing variable font files (`UbuntuMono[wght].ttf`). Replaced with classic static UbuntuMono fonts downloaded from Ubuntu font archive.
+
+### Added
+- **`scripts/fix_fonts.sh`** — Removes the fontconfig reject rule, fixes broken UbuntuMono symlinks, rebuilds font cache. Restores all 11 Ubuntu + 4 UbuntuMono font faces.
+- Font fix integrated into `scripts/install.sh` (step 7/8)
+
+---
+
 ## [2.0.0] - 2026-02-07
 
 ### Added — Custom Kernel

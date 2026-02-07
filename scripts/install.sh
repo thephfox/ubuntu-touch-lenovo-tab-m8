@@ -27,25 +27,25 @@ echo "Device: Lenovo Tab M8 HD (TB-8505F)"
 echo ""
 
 # Remount root filesystem read-write
-echo "[1/7] Remounting root filesystem read-write..."
+echo "[1/8] Remounting root filesystem read-write..."
 mount -o remount,rw / || true
 
 # Install performance tuning service
-echo "[2/7] Installing performance tuning service..."
+echo "[2/8] Installing performance tuning service..."
 cp "${SCRIPT_DIR}/../configs/performance-tuning.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable performance-tuning.service
 echo "  Done."
 
 # Install zRAM resize service
-echo "[3/7] Installing zRAM resize service (1.5GB)..."
+echo "[3/8] Installing zRAM resize service (1.5GB)..."
 cp "${SCRIPT_DIR}/../configs/zram-resize.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable zram-resize.service
 echo "  Done."
 
 # Install PSI OOM guard
-echo "[4/7] Installing PSI-based OOM guard..."
+echo "[4/8] Installing PSI-based OOM guard..."
 cp "${SCRIPT_DIR}/psi-oom-guard.sh" /usr/local/bin/
 chmod +x /usr/local/bin/psi-oom-guard.sh
 cp "${SCRIPT_DIR}/../configs/psi-oom-guard.service" /etc/systemd/system/
@@ -54,7 +54,7 @@ systemctl enable psi-oom-guard.service
 echo "  Done."
 
 # Install boot status display
-echo "[5/7] Installing framebuffer boot status display..."
+echo "[5/8] Installing framebuffer boot status display..."
 cp "${SCRIPT_DIR}/boot_status.py" /usr/local/bin/
 chmod +x /usr/local/bin/boot_status.py
 cp "${SCRIPT_DIR}/../configs/boot-status-display.service" /etc/systemd/system/
@@ -63,14 +63,19 @@ systemctl enable boot-status-display.service
 echo "  Done."
 
 # Install PulseAudio audio fix
-echo "[6/7] Installing PulseAudio audio crackling fix..."
+echo "[6/8] Installing PulseAudio audio crackling fix..."
 mkdir -p /etc/pulse/default.pa.d /etc/pulse/daemon.conf.d
 cp "${SCRIPT_DIR}/../configs/pulse/99-fix-crackling.pa" /etc/pulse/default.pa.d/
 cp "${SCRIPT_DIR}/../configs/pulse/99-fix-crackling.conf" /etc/pulse/daemon.conf.d/
 echo "  Done."
 
+# Fix missing/blank characters (font issue)
+echo "[7/8] Fixing fonts (missing/blank characters)..."
+sh "${SCRIPT_DIR}/fix_fonts.sh"
+echo "  Done."
+
 # Create bind mount directories
-echo "[7/7] Setting up space optimization (bind mounts)..."
+echo "[8/8] Setting up space optimization (bind mounts)..."
 mkdir -p /home/.system/apt-cache /home/.system/log
 echo "  Done."
 

@@ -99,6 +99,7 @@ These apply on top of the custom kernel and don't require recompilation:
 │       └── 99-fix-crackling.conf
 ├── scripts/
 │   ├── boot_status.py                   # Framebuffer boot status renderer
+│   ├── fix_fonts.sh                     # Fix missing/blank characters (font fix)
 │   ├── psi-oom-guard.sh                 # PSI-based OOM killer
 │   ├── install.sh                       # One-shot installer
 │   └── verify.sh                        # Post-install verification
@@ -180,7 +181,7 @@ If the new kernel doesn't boot:
 
 See [`docs/KNOWN_ISSUES.md`](docs/KNOWN_ISSUES.md). Key issues:
 
-- **Missing/blank characters** in UI text (upstream font rendering issue)
+- ~~**Missing/blank characters**~~ — **Fixed in v2.1.0** (fontconfig reject rule + broken symlinks)
 - **Audio crackling** — mitigated by PulseAudio tuning in this project
 - **Back camera cloudy** — hardware/driver issue, no fix yet
 - **Tap to wake** — not supported by current kernel
