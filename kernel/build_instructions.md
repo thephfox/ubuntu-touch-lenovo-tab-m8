@@ -1,166 +1,216 @@
 # Kernel Build Instructions
 
-## Overview
+Complete, tested guide for building the optimized kernel for the Lenovo Tab M8 HD (TB-8505F) running Ubuntu Touch.
 
-This guide explains how to compile a custom kernel for the Lenovo Tab M8 HD (TB-8505F)
-with the optimizations proposed in [`defconfig_changes.md`](defconfig_changes.md).
-
-**Base kernel**: Linux 4.9.190 (Android 10, MediaTek MT8166B)
-**Architecture**: ARM64 (aarch64)
-**Toolchain**: GCC aarch64-linux-android (Android NDK or Linaro)
+- **Kernel**: Linux 4.9.190+ (halium-10-4.9 branch)
+- **Architecture**: ARM64 (aarch64)
+- **Toolchain**: Android prebuilt clang 9.0.3 (r353983c) + GCC 4.9 backend
+- **Build method**: Out-of-tree (`make O=...`), matching UBports CI exactly
 
 ---
 
 ## Prerequisites
 
 ### Host System
-- Ubuntu 20.04+ or similar Linux distribution
-- ~20 GB free disk space
-- 8+ GB RAM recommended
+- Linux x86_64 (tested on Debian 12 / Ubuntu 22.04+)
+- ~30 GB free disk space
+- 4+ GB RAM (8+ recommended)
 
 ### Packages
 ```bash
 sudo apt install -y \
     build-essential bc bison flex libssl-dev \
-    git curl wget python3 \
-    gcc-aarch64-linux-gnu \
+    git curl wget python2 python3 \
     device-tree-compiler
 ```
 
+> **Note**: Python 2 is required by MediaTek's `DrvGen.py` build scripts.
+
 ### Kernel Source
 ```bash
-# Clone the stock Lenovo kernel source
-git clone https://github.com/CoderCharmander/tb8505f-kernel.git
-cd tb8505f-kernel
+git clone --branch halium-10-4.9 --depth=1 \
+    https://gitlab.com/redstar-team/ubports/lenovo-tab-m8/kernel-lenovo-tab-m8.git
+cd kernel-lenovo-tab-m8
+```
+
+### Toolchain Setup
+```bash
+# Android prebuilt clang 9.0.3 (exact version used by UBports CI)
+mkdir -p android-clang && cd android-clang
+git clone --branch android10-gsi --depth=1 \
+    https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 clang-src
+# The clang binary is at clang-src/clang-r353983c/bin/clang
+
+# GCC 4.9 aarch64 cross-compiler
+git clone --depth=1 \
+    https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9
 ```
 
 ---
 
 ## Build Steps
 
+The build script `build_optimized_v3.sh` automates all steps below. You can also run them manually.
+
 ### 1. Set Up Environment
 ```bash
 export ARCH=arm64
-export SUBARCH=arm64
-export CROSS_COMPILE=aarch64-linux-gnu-
-
-# Or if using Android NDK toolchain:
-# export CROSS_COMPILE=/path/to/android-ndk/toolchains/aarch64-linux-android-4.9/prebuilt/linux-x86_64/bin/aarch64-linux-android-
+export CLANG_TRIPLE=aarch64-linux-gnu-
+export CROSS_COMPILE=/path/to/aarch64-linux-android-4.9/bin/aarch64-linux-android-
+export CC=/path/to/clang-r353983c/bin/clang
+export PATH="/path/to/clang-r353983c/bin:/path/to/aarch64-linux-android-4.9/bin:${PATH}"
 ```
 
-### 2. Generate Default Config
+### 2. Apply Source Fixes
+These are minimal patches required for a clean build:
+
 ```bash
-# The defconfig for TB-8505F (check the exact name in arch/arm64/configs/)
-make akita_row_wifi_defconfig
+# Fix dtc host tool duplicate symbol
+sed -i 's/^YYLTYPE yylloc;/extern YYLTYPE yylloc;/' scripts/dtc/dtc-lexer.lex.c_shipped
+
+# Fix ac107 audio codec const qualifier
+sed -i 's/char \*regulator_name = NULL;/const char *regulator_name = NULL;/' \
+    sound/soc/mediatek/ac107/ac107.c
+
+# Remove unsupported compiler flag
+find . -name 'Makefile' -exec grep -l 'Wno-incompatible-pointer-types' {} \; | \
+    while read f; do sed -i 's/-Wno-incompatible-pointer-types//g' "$f"; done
+
+# Add missing include path for helio-dvfsrc
+echo 'ccflags-y += -I$(srctree)/drivers/devfreq/' >> drivers/devfreq/Makefile
+
+# Remove AGO dependency from KSM (Android Go blocks KSM unnecessarily)
+sed -i '/depends on !MTK_ENABLE_AGO/d' mm/Kconfig
+
+# Guard HMP-only tracepoints (they reference structs not available without SCHED_HMP)
+sed -i '812i #ifdef CONFIG_SCHED_HMP' include/trace/events/sched.h
+sed -i '999a #endif /* CONFIG_SCHED_HMP */' include/trace/events/sched.h
 ```
 
-### 3. Apply Our Changes
+### 3. Configure
 ```bash
-# Enable KSM (Kernel Same-page Merging)
-scripts/config --enable CONFIG_KSM
+OUT=/path/to/build/output
+make O="$OUT" CC=$CC akita_row_wifi_defconfig halium.config
 
-# Enable ZSWAP and backends
-scripts/config --enable CONFIG_ZSWAP
-scripts/config --enable CONFIG_ZPOOL
-scripts/config --enable CONFIG_ZBUD
-scripts/config --enable CONFIG_Z3FOLD
+# Apply optimizations
+SC="scripts/config --file $OUT/.config"
+$SC --enable CONFIG_KSM
+$SC --enable CONFIG_FRONTSWAP
+$SC --enable CONFIG_ZSWAP
+$SC --enable CONFIG_ZPOOL
+$SC --enable CONFIG_ZBUD
+$SC --enable CONFIG_Z3FOLD
+$SC --enable CONFIG_CLEANCACHE
+$SC --enable CONFIG_TCP_CONG_BBR
+$SC --enable CONFIG_BPF_JIT
+$SC --enable CONFIG_FRAMEBUFFER_CONSOLE
+$SC --enable CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY
+$SC --enable CONFIG_JUMP_LABEL
+$SC --enable CONFIG_SLAB_FREELIST_RANDOM
+$SC --disable CONFIG_DEBUG_INFO
+$SC --disable CONFIG_PRINTK_TIME
 
-# Enable framebuffer console
-scripts/config --enable CONFIG_FRAMEBUFFER_CONSOLE
-scripts/config --enable CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY
-scripts/config --enable CONFIG_LOGO
-scripts/config --enable CONFIG_LOGO_LINUX_CLUT224
-
-# Enable BBR TCP
-scripts/config --enable CONFIG_TCP_CONG_BBR
-
-# Enable BPF JIT
-scripts/config --enable CONFIG_BPF_JIT
-
-# Optional: Transparent Hugepages (madvise mode)
-scripts/config --enable CONFIG_TRANSPARENT_HUGEPAGE
-scripts/config --set-val CONFIG_TRANSPARENT_HUGEPAGE_MADVISE y
+# Finalize (resolves dependencies)
+make O="$OUT" CC=$CC olddefconfig
 ```
 
-### 4. Build the Kernel
+### 4. Build
 ```bash
-# Build with all available cores
-make -j$(nproc)
-
-# Output: arch/arm64/boot/Image.gz-dtb
+make O="$OUT" CC=$CC -j$(nproc --all)
+# Output: $OUT/arch/arm64/boot/Image.gz-dtb (~11MB)
 ```
 
-### 5. Create boot.img
-```bash
-# You need the original boot.img to extract the ramdisk
-# Then repack with the new kernel image
+---
 
-# Using mkbootimg (from Android tools):
-mkbootimg \
-    --kernel arch/arm64/boot/Image.gz-dtb \
-    --ramdisk ramdisk.cpio.gz \
-    --base 0x40000000 \
-    --kernel_offset 0x00080000 \
-    --ramdisk_offset 0x11B00000 \
-    --tags_offset 0x07880000 \
+## Create boot.img
+
+### Extract Ramdisk from Current Boot Image
+```bash
+# Pull current boot.img from the device
+adb shell "echo YOUR_PHABLET_PASSWORD | sudo -S dd if=/dev/mmcblk0p28 of=/tmp/boot.img bs=4096"
+adb pull /tmp/boot.img boot_current.img
+
+# Unpack (requires AOSP mkbootimg tools)
+git clone --depth=1 https://android.googlesource.com/platform/system/tools/mkbootimg
+python3 mkbootimg/unpack_bootimg.py --boot_img boot_current.img --out boot_unpack/
+```
+
+### Repack with New Kernel
+```bash
+python3 mkbootimg/mkbootimg.py \
+    --kernel $OUT/arch/arm64/boot/Image.gz-dtb \
+    --ramdisk boot_unpack/ramdisk \
+    --dtb boot_unpack/dtb \
+    --base 0x40078000 \
+    --kernel_offset 0x00008000 \
+    --ramdisk_offset 0x11a88000 \
+    --tags_offset 0x07808000 \
+    --dtb_offset 0x07808000 \
+    --os_version 10.0.0 \
+    --os_patch_level 2023-02 \
+    --header_version 2 \
+    --board akita_row_wifi \
     --pagesize 2048 \
-    --cmdline "bootopt=64S3,32N2,64N2" \
-    --output boot.img
+    --cmdline "bootopt=64S3,32N2,64N2 systempart=/dev/disk/by-partlabel/system" \
+    --output boot_optimized.img
 ```
 
-> **Note**: The exact offsets and cmdline may vary. Extract them from the original
-> boot.img using `unpackbootimg` or `abootimg`.
-
-### 6. Flash
+### Flash
 ```bash
-adb reboot bootloader
-fastboot flash boot boot.img
+adb shell "echo YOUR_PHABLET_PASSWORD | sudo -S reboot bootloader"
+# Wait for fastboot mode...
+fastboot flash boot boot_optimized.img
 fastboot reboot
 ```
 
 ---
 
-## Verification
+## Post-Flash Setup
 
-After booting the new kernel:
+### Install Kernel Activation Service
+The kernel features are built in but need to be activated at boot:
 
 ```bash
-# Check kernel version
+adb push kernel-optimizations.service /tmp/
+adb shell "echo YOUR_PHABLET_PASSWORD | sudo -S bash -c '\
+    mount -o remount,rw / && \
+    cp /tmp/kernel-optimizations.service /etc/systemd/system/ && \
+    systemctl daemon-reload && \
+    systemctl enable kernel-optimizations.service && \
+    systemctl start kernel-optimizations.service'"
+```
+
+### Verify
+```bash
+# Check kernel version (should show 4.9.190+ with your build date)
 adb shell uname -a
 
-# Verify KSM is available
-adb shell "echo 2580 | sudo -S cat /sys/kernel/mm/ksm/run"
-
-# Enable KSM
-adb shell "echo 2580 | sudo -S sh -c 'echo 1 > /sys/kernel/mm/ksm/run'"
-
-# Verify ZSWAP
-adb shell "echo 2580 | sudo -S cat /sys/module/zswap/parameters/enabled"
-
-# Verify framebuffer console
-adb shell "echo 2580 | sudo -S cat /proc/config.gz | gunzip | grep FRAMEBUFFER_CONSOLE"
-
-# Run full verification
-adb push scripts/verify.sh /tmp/
-adb shell "echo 2580 | sudo -S sh /tmp/verify.sh"
+# Verify features are active
+adb shell cat /sys/kernel/mm/ksm/run                    # Should be: 1
+adb shell cat /sys/module/zswap/parameters/enabled       # Should be: Y
+adb shell cat /proc/sys/net/ipv4/tcp_congestion_control  # Should be: bbr
+adb shell cat /proc/sys/net/core/bpf_jit_enable          # Should be: 1
+adb shell cat /sys/block/mmcblk0/queue/scheduler         # Should be: [deadline]
 ```
 
 ---
 
-## Troubleshooting
+## Known Build Issues
 
-### Kernel doesn't boot
-- Check kernel cmdline matches the original
-- Verify the ramdisk is correct (extract from original boot.img)
-- Check dmesg via `adb shell dmesg` if you can get to fastboot
+### SCHED_AUTOGROUP breaks the build
+MediaTek's `eas_plus.c` uses HMP scheduler APIs unconditionally outside `#ifdef` guards. Enabling `CONFIG_SCHED_AUTOGROUP` exposes these latent bugs. **Do not enable it.**
 
-### KSM not merging pages
-- Ensure `echo 1 > /sys/kernel/mm/ksm/run`
-- Check `/sys/kernel/mm/ksm/pages_shared` — should increase over time
-- Tune `pages_to_scan` and `sleep_millisecs` for your workload
+### CC_OPTIMIZE_FOR_SIZE (-Os) breaks the build
+Switching from `-O2` to `-Os` changes inlining behavior, causing dead HMP code paths to be compiled and fail. **Keep `CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y`.**
 
-### Recovery
+### MTK_ENABLE_AGO blocks KSM
+The `CONFIG_KSM` Kconfig has `depends on !MTK_ENABLE_AGO`. Since disabling AGO breaks HMP scheduler structs, we patch the Kconfig to remove this dependency instead.
+
+---
+
+## Recovery
+
 If the new kernel doesn't boot:
-1. Reboot to fastboot: hold Volume Down + Power
-2. Flash the original boot.img: `fastboot flash boot original_boot.img`
-3. Or use Lenovo Rescue and Smart Assistant to restore stock Android
+1. Hold **Volume Down + Power** to enter fastboot
+2. Flash the backup: `fastboot flash boot boot_current.img`
+3. Or use **Lenovo Rescue and Smart Assistant** to restore stock Android

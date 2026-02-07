@@ -1,33 +1,64 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+Format follows [Semantic Versioning](https://semver.org/) and [Keep a Changelog](https://keepachangelog.com/).
 
-## [1.0.0] - 2026-02-07
+## [2.0.0] - 2026-02-07
 
-### Added
-- **Performance tuning service** — CPU governor, EAS scheduler, I/O scheduler, memory management, network tuning
-- **zRAM resize service** — increases compressed swap from 1GB to 1.5GB with LZ4
-- **PSI-based OOM guard** — proactive memory pressure monitoring to prevent system freezes
-- **Framebuffer boot status display** — Python-based renderer shows systemd boot progress on `/dev/fb0`
-- **LK bootloader patch** — removes "Orange State" 5-second warning overlay
-- **Boot logo replacement tool** — replace the stock Lenovo/Android logo with custom branding
-- **PulseAudio audio fix** — disables tsched and increases buffer sizes to fix crackling
-- **Space optimization** — bind mounts for apt cache and logs, locale cleanup, package removal
-- **Installer script** — one-shot installation of all optimizations
-- **Verification script** — comprehensive post-install check
+### Added — Custom Kernel
+- **Custom-compiled kernel** (4.9.190+) built from redstar-team halium-10-4.9 source
+- **KSM** (Kernel Same-page Merging) — deduplicates memory pages, critical for 2GB RAM
+- **ZSWAP** with FRONTSWAP, ZBUD, Z3FOLD backends — compressed swap cache
+- **CLEANCACHE** — compressed clean page cache
+- **TCP BBR** — Google's congestion control for better WiFi throughput
+- **BPF JIT** — JIT-compiled packet filters
+- **JUMP_LABEL** — runtime code patching, eliminates branch overhead
+- **SLAB_FREELIST_RANDOM** — memory allocator security hardening
+- **FRAMEBUFFER_CONSOLE** — native kernel debug console on display
+- **DEBUG_INFO disabled** — smaller kernel image (~10-15MB saved)
+- **Kernel activation service** (`kernel-optimizations.service`) — enables KSM, ZSWAP, BBR, BPF JIT, and deadline I/O scheduler on every boot
+- **Proven build script** (`build_optimized_v3.sh`) — fully automated, reproducible kernel build
+- **Complete build documentation** with exact toolchain versions, source fixes, and mkbootimg parameters
+
+### Added — Source Fixes for Clean Build
+- dtc host tool duplicate symbol fix (`yylloc`)
+- ac107 audio codec const qualifier and pointer cast fixes
+- Removed unsupported `-Wno-incompatible-pointer-types` compiler flag
+- Added missing helio-dvfsrc include path
+- Patched KSM Kconfig to remove unnecessary AGO dependency
+- Guarded HMP-only tracepoints in `sched.h` with `#ifdef CONFIG_SCHED_HMP`
+
+### Changed
+- README rewritten to document custom kernel features and installation
+- Build instructions rewritten with tested, proven steps
+- `.gitignore` expanded to cover kernel artifacts, secrets, and personal config
+
+### Documented
+- Known build issues: SCHED_AUTOGROUP, CC_OPTIMIZE_FOR_SIZE, MTK_ENABLE_AGO
+- Complete mkbootimg parameters for boot.img repacking
+- Recovery procedures
+
+---
+
+## [1.0.0] - 2026-02-06
+
+### Added — Runtime Optimizations (No Kernel Rebuild)
+- **Performance tuning service** — CPU governor, EAS scheduler, I/O, memory, network
+- **zRAM resize service** — 1GB to 1.5GB with LZ4 compression
+- **PSI-based OOM guard** — proactive memory pressure monitoring
+- **Framebuffer boot status display** — Python-based renderer on `/dev/fb0`
+- **LK bootloader patch** — removes "Orange State" 5-second warning
+- **Boot logo replacement tool** — custom branding
+- **PulseAudio audio fix** — larger buffers, disabled timer-based scheduling
+- **Space optimization** — bind mounts, locale cleanup, package removal
+- **Installer script** — one-shot installation
+- **Verification script** — post-install check
 
 ### Performance Improvements
-- CPU minimum frequency raised to 1056 MHz (from dynamic)
+- CPU minimum frequency raised to 1056 MHz
 - PPM SYS_BOOST enabled for burst performance
 - EAS top-app boost 10%, foreground boost 5%
 - I/O scheduler set to deadline with 256KB read-ahead
-- Scheduler migration cost reduced to 100us
 - TCP congestion control changed from BIC to CUBIC
 - VM swappiness reduced to 30, vfs_cache_pressure to 50
-- zRAM increased 50% (1GB -> 1.5GB)
-
-### Documentation
-- Comprehensive README with device specs, installation guide, and roadmap
-- Known issues documentation with upstream and local fixes
-- Kernel defconfig change proposals for future recompilation
-- Contributing guidelines
+- zRAM increased 50% (1GB to 1.5GB)

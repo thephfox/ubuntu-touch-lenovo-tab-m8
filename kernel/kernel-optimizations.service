@@ -1,0 +1,11 @@
+[Unit]
+Description=Kernel Performance Optimizations
+After=multi-user.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c "echo 1 > /sys/kernel/mm/ksm/run; echo 200 > /sys/kernel/mm/ksm/sleep_millisecs; echo Y > /sys/module/zswap/parameters/enabled; echo bbr > /proc/sys/net/ipv4/tcp_congestion_control; echo 1 > /proc/sys/net/core/bpf_jit_enable; echo deadline > /sys/block/mmcblk0/queue/scheduler"
+
+[Install]
+WantedBy=multi-user.target

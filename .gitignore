@@ -3,20 +3,54 @@
 *.img
 *.raw
 *.zip
+*.gz
+*.bz2
+
+# Kernel build artifacts
+*.o
+*.ko
+*.mod.c
+*.order
+*.symvers
+vmlinux
+Image*
 
 # Python
 __pycache__/
 *.pyc
+*.pyo
 
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# Temporary files
+# Temporary / working files
 *.tmp
 *.bak
-*.swp
+*.log
+*.orig
+
+# Credentials / secrets - NEVER commit these
+*.token
+*.key
+*.secret
+*.pem
+.env
+.env.*
+credentials*
+*_credentials*
+*password*
+*_token*
+
+# Personal config that should not be shared
+# (build server IPs, device serial numbers, etc.)
+local.conf
+local.env

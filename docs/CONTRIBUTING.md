@@ -24,7 +24,7 @@ Thank you for your interest in improving Ubuntu Touch on the Lenovo Tab M8 HD!
 - **Tap to wake** — FT8201 touch controller gesture wake handler
 
 #### Medium Priority
-- **Kernel recompilation** — Enable KSM, ZSWAP, FBCON, BBR (see `kernel/defconfig_changes.md`)
+- **Kernel improvements** — Fix MTK HMP scheduler guards to enable SCHED_AUTOGROUP and -Os
 - **Waydroid improvements** — Better memory management for Android container on 2GB RAM
 - **Battery optimization** — Power management tuning for longer battery life
 
