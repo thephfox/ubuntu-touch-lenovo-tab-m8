@@ -6,11 +6,12 @@ Format follows [Semantic Versioning](https://semver.org/) and [Keep a Changelog]
 ## [2.1.0] - 2026-02-07
 
 ### Fixed
-- **Missing/blank characters in UI** — Root cause identified: Ubuntu Noble's `71-ubuntulegacy.conf` fontconfig rule rejects all classic static Ubuntu font files in favor of variable fonts that were never installed. Only 2 of 15 font faces were registered, causing blank glyphs when QML requests Bold, Medium, Thin, or Mono weights.
-- **Broken UbuntuMono symlinks** — 4 symlinks pointed to missing variable font files (`UbuntuMono[wght].ttf`). Replaced with classic static UbuntuMono fonts downloaded from Ubuntu font archive.
+- **Missing/blank characters in UI** — Random glyphs (e.g. 'm', 'y') disappeared from the Lomiri UI. Root cause: Qt 5.15's distance field text rendering corrupts the GPU glyph texture atlas on the PowerVR GE8320. The bug is **not in the font files** — it persists even after replacing all Ubuntu fonts with DejaVu Sans. Fix: `QML_DISABLE_DISTANCEFIELD=1` forces bitmap glyph rendering.
+- **Broken UbuntuMono symlinks** — 4 symlinks pointed to missing variable font files (`UbuntuMono[wght].ttf`). Replaced with classic static UbuntuMono fonts.
+- **Fontconfig reject rule** — Noble's `71-ubuntulegacy.conf` rejected classic static Ubuntu fonts in favor of variable fonts that were never installed.
 
 ### Added
-- **`scripts/fix_fonts.sh`** — Removes the fontconfig reject rule, fixes broken UbuntuMono symlinks, rebuilds font cache. Restores all 11 Ubuntu + 4 UbuntuMono font faces.
+- **`scripts/fix_fonts.sh`** — Sets `QML_DISABLE_DISTANCEFIELD=1` via `/etc/profile.d/qt-font-fix.sh`, removes fontconfig reject rule, fixes broken UbuntuMono symlinks, clears font caches.
 - Font fix integrated into `scripts/install.sh` (step 7/8)
 
 ---

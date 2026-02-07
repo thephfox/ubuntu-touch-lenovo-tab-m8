@@ -4,10 +4,10 @@
 
 ### ✅ Missing/Blank Characters in UI Text
 - **Status**: **Fixed in this project** (v2.1.0)
-- **Description**: Some characters appear blank or missing in the Lomiri UI. Caused by Ubuntu Noble (24.04) shipping a fontconfig rule (`71-ubuntulegacy.conf`) that rejects all classic static Ubuntu font files in favor of variable fonts — but the variable fonts were never installed on this device, leaving only 2 of 15 font faces registered.
-- **Root cause**: `71-ubuntulegacy.conf` rejects `Ubuntu-R.ttf`, `Ubuntu-B.ttf`, `Ubuntu-M.ttf`, etc. Plus 4 broken UbuntuMono symlinks pointing to missing variable font files.
-- **Fix**: `scripts/fix_fonts.sh` removes the reject rule, replaces broken UbuntuMono symlinks with classic static fonts, and rebuilds the fontconfig cache. Restores all 11 Ubuntu + 4 UbuntuMono font faces.
-- **Affects**: All Ubuntu Touch Noble users on this device
+- **Description**: Random characters (e.g. 'm', 'y') disappear from the Lomiri UI — "System Settings" shows as "Syste Settings" or "S stem Settings".
+- **Root cause**: Qt 5.15's distance field text rendering generates a GPU texture atlas for glyph caching. On the PowerVR GE8320 GPU, this atlas gets corrupted, causing random glyphs to go missing. The bug is **not in the font files** — it persists even after replacing all Ubuntu fonts with completely different font families (DejaVu Sans). Additionally, Noble's `71-ubuntulegacy.conf` rejects classic static fonts and ships broken UbuntuMono symlinks.
+- **Fix**: `scripts/fix_fonts.sh` sets `QML_DISABLE_DISTANCEFIELD=1` to force bitmap glyph rendering, removes the fontconfig reject rule, and fixes broken UbuntuMono symlinks.
+- **Affects**: Any Ubuntu Touch Noble device with a PowerVR GPU
 
 ### 🟡 Audio Crackling from Speakers and Headphones
 - **Status**: **Mitigated in this project**
@@ -65,13 +65,22 @@
 
 ---
 
-## Kernel-Level Issues (Require Recompilation)
+## Kernel-Level Issues (Resolved in v2.0.0)
 
-| Issue | Missing Config | Impact |
-|-------|---------------|--------|
-| No KSM (page deduplication) | `CONFIG_KSM=y` | Could save 100-200MB RAM |
-| No ZSWAP (compressed swap cache) | `CONFIG_ZSWAP=y` | Faster swap, less I/O |
-| No framebuffer console | `CONFIG_FRAMEBUFFER_CONSOLE=y` | No native verbose boot |
-| No BBR TCP | `CONFIG_TCP_CONG_BBR=y` | Suboptimal network throughput |
-| No BPF JIT | `CONFIG_BPF_JIT=y` | Slower packet filtering |
-| No transparent hugepages | `CONFIG_TRANSPARENT_HUGEPAGE=y` | Minor perf loss |
+All of the following were resolved by the custom kernel build in v2.0.0:
+
+| Issue | Config | Status |
+|-------|--------|--------|
+| KSM (page deduplication) | `CONFIG_KSM=y` | ✅ Enabled |
+| ZSWAP (compressed swap cache) | `CONFIG_ZSWAP=y` | ✅ Enabled |
+| Framebuffer console | `CONFIG_FRAMEBUFFER_CONSOLE=y` | ✅ Enabled |
+| BBR TCP congestion control | `CONFIG_TCP_CONG_BBR=y` | ✅ Enabled |
+| BPF JIT compiler | `CONFIG_BPF_JIT=y` | ✅ Enabled |
+| Debug info stripped | `CONFIG_DEBUG_INFO=n` | ✅ Disabled (smaller image) |
+
+### Still Not Possible (MTK HMP Code Limitations)
+| Feature | Reason |
+|---------|--------|
+| `SCHED_AUTOGROUP` | Mutually exclusive with MTK's `SCHED_HMP`; `eas_plus.c` uses HMP APIs without `#ifdef` guards |
+| `CC_OPTIMIZE_FOR_SIZE` (-Os) | Changes inlining, exposing dead HMP code paths |
+| Transparent Hugepages | Not tested; low priority on 2GB device |

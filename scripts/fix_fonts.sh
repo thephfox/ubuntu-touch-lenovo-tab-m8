@@ -2,20 +2,28 @@
 # =============================================================================
 # fix_fonts.sh — Fix missing/blank characters in Ubuntu Touch UI
 #
-# Problem: Ubuntu Noble (24.04) ships a fontconfig rule (71-ubuntulegacy.conf)
-# that rejects all classic static Ubuntu font files (Ubuntu-R.ttf, Ubuntu-B.ttf,
-# etc.) in favor of variable fonts. However, on this device the variable fonts
-# were never installed — only broken symlinks remain. This leaves the system
-# with only 2 registered fonts (Ubuntu-Regular-static.ttf and
-# Ubuntu-Light-static.ttf), causing missing/blank characters in the Lomiri UI
-# when QML components request font weights like Bold, Medium, or Thin.
+# Problem:
+#   Random characters (e.g. 'm', 'y') disappear from the Lomiri UI on devices
+#   with PowerVR GPUs (like the MediaTek Helio A22's PowerVR GE8320).
+#
+# Root cause:
+#   Qt 5.15's distance field text rendering generates a GPU texture atlas for
+#   glyph caching. On PowerVR GPUs, this atlas gets corrupted, causing random
+#   glyphs to go missing. The bug is NOT in the font files — it persists even
+#   after replacing all Ubuntu fonts with completely different font families.
+#
+# Additionally, Ubuntu Noble (24.04) ships a fontconfig rule that rejects the
+#   classic static Ubuntu font files and has broken UbuntuMono symlinks pointing
+#   to variable fonts that were never installed.
 #
 # Fix:
-#   1. Remove the fontconfig reject rule (71-ubuntulegacy.conf)
-#   2. Fix broken UbuntuMono symlinks (point to real static files)
-#   3. Rebuild fontconfig cache
+#   1. Set QML_DISABLE_DISTANCEFIELD=1 to force bitmap glyph rendering
+#   2. Remove the fontconfig reject rule (71-ubuntulegacy.conf)
+#   3. Fix broken UbuntuMono symlinks with classic static fonts
+#   4. Clear font caches
 #
-# Target: Lenovo Tab M8 HD (TB-8505F) running Ubuntu Touch 24.04
+# Tested on: Lenovo Tab M8 HD (TB-8505F), PowerVR GE8320, Qt 5.15.13
+# Affects:   Any Ubuntu Touch Noble device with PowerVR GPU
 #
 # Usage:
 #   adb push scripts/fix_fonts.sh /tmp/fix_fonts.sh
@@ -24,93 +32,97 @@
 set -e
 
 FONT_DIR="/usr/share/fonts/truetype/ubuntu"
-LEGACY_CONF="/etc/fonts/conf.d/71-ubuntulegacy.conf"
+FC_DIR="/etc/fonts/conf.d"
+PROFILE_DIR="/etc/profile.d"
 
 echo "=== Ubuntu Touch Font Fix ==="
 echo ""
 
 # Step 0: Remount root filesystem read-write
-echo "[0/3] Remounting root filesystem..."
+echo "[0/4] Remounting root filesystem..."
 mount -o remount,rw / || true
 
-# Step 1: Remove the fontconfig reject rule
-echo "[1/3] Removing fontconfig legacy reject rule..."
-if [ -f "$LEGACY_CONF" ]; then
-    # Back it up first
-    cp "$LEGACY_CONF" "${LEGACY_CONF}.bak"
-    rm "$LEGACY_CONF"
-    echo "  Removed: $LEGACY_CONF"
-    echo "  Backup:  ${LEGACY_CONF}.bak"
+# Step 1: Disable Qt distance field rendering (the actual fix)
+echo "[1/4] Disabling Qt distance field glyph rendering..."
+cat > "$PROFILE_DIR/qt-font-fix.sh" << 'EOF'
+# Fix missing glyphs in Qt 5.15 on PowerVR GE8320 GPU.
+# Qt's distance field text rendering corrupts the GPU glyph texture atlas,
+# causing random characters to disappear. This forces traditional bitmap
+# rendering which is slightly slower but renders all glyphs correctly.
+export QML_DISABLE_DISTANCEFIELD=1
+EOF
+chmod 644 "$PROFILE_DIR/qt-font-fix.sh"
+echo "  Created $PROFILE_DIR/qt-font-fix.sh"
+echo "  QML_DISABLE_DISTANCEFIELD=1"
+
+# Step 2: Remove the fontconfig reject rule
+echo "[2/4] Removing fontconfig legacy reject rule..."
+if [ -f "$FC_DIR/71-ubuntulegacy.conf" ]; then
+    rm -f "$FC_DIR/71-ubuntulegacy.conf"
+    echo "  Removed: 71-ubuntulegacy.conf"
 else
-    echo "  Already removed (not found)"
+    echo "  Already removed"
 fi
 
-# Step 2: Fix broken UbuntuMono symlinks
-echo "[2/3] Fixing broken UbuntuMono symlinks..."
-
-# Check if the variable font targets exist
-if [ ! -f "$FONT_DIR/UbuntuMono[wght].ttf" ]; then
-    echo "  Variable fonts missing (expected). Replacing symlinks with static copies..."
-
-    # Download classic UbuntuMono static fonts from Ubuntu font archive
-    # These are the pre-variable-font versions that work with all renderers
-    MONO_URL="https://assets.ubuntu.com/v1/0cef8205-ubuntu-font-family-0.83.zip"
-    TMPDIR=$(mktemp -d)
-
-    if command -v wget >/dev/null 2>&1; then
-        echo "  Downloading classic Ubuntu font family..."
-        wget -q -O "$TMPDIR/ubuntu-fonts.zip" "$MONO_URL" 2>/dev/null
-        if [ -f "$TMPDIR/ubuntu-fonts.zip" ] && command -v unzip >/dev/null 2>&1; then
-            unzip -q -o "$TMPDIR/ubuntu-fonts.zip" -d "$TMPDIR/fonts" 2>/dev/null
-            # Copy the UbuntuMono static fonts
-            for f in UbuntuMono-R.ttf UbuntuMono-B.ttf UbuntuMono-RI.ttf UbuntuMono-BI.ttf; do
-                SRC=$(find "$TMPDIR/fonts" -name "$f" 2>/dev/null | head -1)
-                if [ -n "$SRC" ]; then
-                    rm -f "$FONT_DIR/$f"
-                    cp "$SRC" "$FONT_DIR/$f"
-                    echo "  Installed: $f"
-                fi
-            done
-        else
-            echo "  Download failed or unzip not available. Using fallback..."
-        fi
-        rm -rf "$TMPDIR"
+# Step 3: Fix broken UbuntuMono symlinks
+echo "[3/4] Fixing broken UbuntuMono symlinks..."
+NEED_FIX=0
+for f in UbuntuMono-R.ttf UbuntuMono-B.ttf UbuntuMono-RI.ttf UbuntuMono-BI.ttf; do
+    if [ -L "$FONT_DIR/$f" ] && [ ! -e "$FONT_DIR/$f" ]; then
+        NEED_FIX=1
+        rm -f "$FONT_DIR/$f"
     fi
+done
 
-    # Fallback: if download failed, just remove the broken symlinks
-    # fontconfig will fall back to DejaVu or Noto for monospace
-    for f in UbuntuMono-R.ttf UbuntuMono-B.ttf UbuntuMono-RI.ttf UbuntuMono-BI.ttf; do
-        if [ -L "$FONT_DIR/$f" ] && [ ! -e "$FONT_DIR/$f" ]; then
-            rm -f "$FONT_DIR/$f"
-            echo "  Removed broken symlink: $f"
-        fi
-    done
+if [ "$NEED_FIX" = "1" ]; then
+    TMPDIR=$(mktemp -d)
+    MONO_URL="https://assets.ubuntu.com/v1/0cef8205-ubuntu-font-family-0.83.zip"
+    if wget -q -O "$TMPDIR/ubuntu-fonts.zip" "$MONO_URL" 2>/dev/null; then
+        unzip -q -o "$TMPDIR/ubuntu-fonts.zip" -d "$TMPDIR/fonts" 2>/dev/null
+        for f in UbuntuMono-R.ttf UbuntuMono-B.ttf UbuntuMono-RI.ttf UbuntuMono-BI.ttf; do
+            SRC=$(find "$TMPDIR/fonts" -name "$f" 2>/dev/null | head -1)
+            if [ -n "$SRC" ] && [ -f "$SRC" ]; then
+                cp "$SRC" "$FONT_DIR/$f"
+                chmod 644 "$FONT_DIR/$f"
+                echo "  Installed: $f"
+            fi
+        done
+    else
+        echo "  WARNING: Could not download fonts. Removing broken symlinks only."
+    fi
+    rm -rf "$TMPDIR"
 else
-    echo "  Variable fonts exist, symlinks OK"
+    echo "  UbuntuMono fonts OK"
 fi
 
-# Step 3: Rebuild fontconfig cache
-echo "[3/3] Rebuilding fontconfig cache..."
-fc-cache -f -v 2>/dev/null | tail -3
+# Step 4: Clear font caches
+echo "[4/4] Clearing font caches..."
+fc-cache -f 2>/dev/null
+rm -rf /home/phablet/.cache/fontconfig/* 2>/dev/null
+su - phablet -c "fc-cache -f" 2>/dev/null || true
+echo "  Done"
 
+# Verify
 echo ""
 echo "=== Verification ==="
-echo "Registered Ubuntu fonts:"
-fc-list :family='Ubuntu' --format='  %{file}: %{family} %{style} weight=%{weight}\n' | sort
-echo ""
-echo "Registered UbuntuMono fonts:"
-fc-list :family='Ubuntu Mono' --format='  %{file}: %{family} %{style}\n' | sort
-echo ""
-
 FONT_COUNT=$(fc-list :family='Ubuntu' | wc -l)
-echo "Total Ubuntu font faces registered: $FONT_COUNT"
+MONO_COUNT=$(fc-list :family='Ubuntu Mono' | wc -l)
+echo "  Ubuntu font faces:     $FONT_COUNT (expected: 9+)"
+echo "  UbuntuMono font faces: $MONO_COUNT (expected: 4)"
+echo "  Distance field:        DISABLED (QML_DISABLE_DISTANCEFIELD=1)"
 
-if [ "$FONT_COUNT" -ge 5 ]; then
-    echo ""
-    echo "SUCCESS: Font fix applied. Please reboot or restart Lomiri:"
-    echo "  sudo restart unity8"
+BROKEN=$(find "$FONT_DIR" -xtype l 2>/dev/null | wc -l)
+if [ "$BROKEN" -gt 0 ]; then
+    echo "  WARNING: $BROKEN broken symlinks remain"
 else
-    echo ""
-    echo "WARNING: Only $FONT_COUNT font faces found. Expected 5+."
-    echo "The fix may be incomplete. Check /usr/share/fonts/truetype/ubuntu/"
+    echo "  Broken symlinks:       none"
 fi
+
+echo ""
+echo "=== SUCCESS ==="
+echo "Restart the display manager to apply:"
+echo "  sudo systemctl restart lightdm"
+echo ""
+echo "To revert the distance field fix:"
+echo "  sudo rm $PROFILE_DIR/qt-font-fix.sh"
+echo "  sudo systemctl restart lightdm"

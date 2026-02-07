@@ -181,7 +181,7 @@ If the new kernel doesn't boot:
 
 See [`docs/KNOWN_ISSUES.md`](docs/KNOWN_ISSUES.md). Key issues:
 
-- ~~**Missing/blank characters**~~ — **Fixed in v2.1.0** (fontconfig reject rule + broken symlinks)
+- ~~**Missing/blank characters**~~ — **Fixed in v2.1.0** (Qt distance field rendering bug on PowerVR GPU)
 - **Audio crackling** — mitigated by PulseAudio tuning in this project
 - **Back camera cloudy** — hardware/driver issue, no fix yet
 - **Tap to wake** — not supported by current kernel
