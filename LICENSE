@@ -1,3 +1,14 @@
+DUAL LICENSE
+
+This project contains two categories of work under different licenses:
+
+==============================================================================
+1. SCRIPTS, CONFIGURATIONS, PATCHES, AND DOCUMENTATION — MIT License
+==============================================================================
+
+Applies to: scripts/, configs/, patches/, docs/, README.md, and all non-kernel
+original work in this repository.
+
 MIT License
 
 Copyright (c) 2026 thephfox (https://phfox.com)
@@ -20,9 +31,30 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----
+==============================================================================
+2. KERNEL MODIFICATIONS — GNU General Public License v2
+==============================================================================
 
-ADDITIONAL DISCLAIMER:
+Applies to: kernel/build_optimized_v3.sh (the source patches it applies),
+kernel/defconfig_changes.md, and any compiled kernel binaries produced by
+this project.
+
+The Linux kernel is licensed under the GNU General Public License version 2
+(GPL-2.0). All kernel modifications in this project — including Kconfig
+patches, source fixes, and configuration changes — are derivative works of
+the Linux kernel and are therefore subject to GPL v2.
+
+The upstream kernel source is maintained by the redstar-team at:
+https://gitlab.com/redstar-team/ubports/lenovo-tab-m8/kernel-lenovo-tab-m8
+
+If you distribute compiled kernel binaries built from this project, you must
+make the corresponding source code available per GPL v2 Section 3.
+
+Full text of GPL v2: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+
+==============================================================================
+ADDITIONAL DISCLAIMER
+==============================================================================
 
 This software interacts with low-level device hardware including bootloader
 partitions, kernel parameters, framebuffer devices, and system services.
@@ -32,5 +64,5 @@ THE AUTHOR(S) SHALL NOT BE HELD RESPONSIBLE FOR ANY DAMAGE TO DEVICES,
 COMPUTERS, DATA, OR ANY OTHER PROPERTY ARISING FROM THE USE OR MISUSE OF
 THIS SOFTWARE. USE ENTIRELY AT YOUR OWN RISK.
 
-By using any part of this code, you agree to credit "thephfox" (https://phfox.com)
-as a contributor in your project documentation, README, or source code comments.
+If you use any part of the MIT-licensed code in this project, please credit
+"thephfox" (https://phfox.com) in your project documentation or source code.

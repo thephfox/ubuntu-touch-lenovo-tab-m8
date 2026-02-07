@@ -207,4 +207,7 @@ Always keep a backup of your original boot image before flashing.
 
 ## License
 
-[MIT License](LICENSE) with attribution. You are free to use, modify, and distribute this code. If you use any part of this project, please credit **[thephfox](https://phfox.com)** in your documentation.
+This project is **dual-licensed** (see [LICENSE](LICENSE)):
+
+- **Scripts, configs, patches, docs** — [MIT License](https://opensource.org/licenses/MIT). Credit [thephfox](https://phfox.com) if you reuse.
+- **Kernel modifications** — [GPL v2](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html), per the upstream Linux kernel license. If you distribute compiled kernel binaries, you must provide the corresponding source.
