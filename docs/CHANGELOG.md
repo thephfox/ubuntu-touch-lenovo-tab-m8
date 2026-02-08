@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 Format follows [Semantic Versioning](https://semver.org/) and [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.2.0] - 2026-02-07
+
+### Added — Browser & System Performance Optimizations
+- **QtWebEngine tuning** — Single renderer process (`--renderer-process-limit=1`), JS heap capped at 128MB, GPU memory at 64MB, VP9 disabled (forces faster H.264 software decode), 4 raster threads, zero-copy rasterization, background networking disabled
+- **Browser cache on tmpfs** — 64MB RAM-backed cache for faster page loads (`browser-cache-tmpfs.service`)
+- **Process priority tuning** — Browser/Lomiri get nice -5, ksmd gets nice 19 + idle I/O priority (`tune-priorities.timer`)
+- **Network tuning** — TCP Fast Open, 256KB network buffers, no slow start after idle
+- **VM tuning** — `swappiness=60`, `vfs_cache_pressure=200`, `overcommit_memory=1`, `min_free_kbytes=8192`
+- **CPU governor** — Locked to `performance` (all cores at max frequency)
+- **eMMC readahead** — Increased to 512KB (from 128KB default)
+- **Core dumps disabled** — Saves RAM and disk I/O
+- **Kernel logging reduced** — Warnings only (less CPU overhead)
+- **Boot console disabled** — `disable-fbcon.service` unbinds fbcon to prevent garbled text
+- **mpv + yt-dlp installed** — Play YouTube outside the browser (~30MB RAM vs ~800MB)
+- **`yt` helper command** — `yt <youtube-url>` plays 720p H.264 via mpv, with `-a` (audio), `-l` (360p), `-h` (best) options
+- **`scripts/optimize_performance.sh`** — Consolidated optimization script
+- **`browser-optimizations.service`** — Persists KSM, VM, network, and CPU tuning across reboots
+
+### Performance Results
+- **RAM available**: 366 MB → 682 MB (+86%)
+- **Swap pressure**: 202 MB → 82 MB (-59%)
+- **Browser renderer RAM**: 571 MB → 367 MB (-36%)
+- **Renderer processes**: Multiple → 1
+
+---
+
 ## [2.1.0] - 2026-02-07
 
 ### Fixed

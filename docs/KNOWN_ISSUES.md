@@ -84,3 +84,41 @@ All of the following were resolved by the custom kernel build in v2.0.0:
 | `SCHED_AUTOGROUP` | Mutually exclusive with MTK's `SCHED_HMP`; `eas_plus.c` uses HMP APIs without `#ifdef` guards |
 | `CC_OPTIMIZE_FOR_SIZE` (-Os) | Changes inlining, exposing dead HMP code paths |
 | Transparent Hugepages | Not tested; low priority on 2GB device |
+
+---
+
+## Cosmetic Issues
+
+### 🟡 On-Screen Keyboard Text Appears Washed Out
+- **Status**: Known cosmetic issue (v2.1.0+)
+- **Description**: The Lomiri on-screen keyboard (maliit-server) letters appear slightly grey/washed out instead of crisp black.
+- **Root cause**: `QML_DISABLE_DISTANCEFIELD=1` (required to fix missing characters) forces Qt to use bitmap glyph rendering instead of distance field rendering. Bitmap rendering produces thinner, lower-contrast text at small font sizes on the PowerVR GE8320 GPU.
+- **Why it can't be fixed**: The env var must be set globally — it's inherited by all Qt processes including maliit-server. Wrapping maliit-server to unset it breaks the keyboard entirely (maliit-server fails to start without the parent session's Mir socket). Changing font color or weight has no effect on the rendering quality.
+- **Trade-off**: Slightly washed-out but readable keyboard vs. completely missing characters throughout the UI. The current state is the better trade-off.
+- **Affects**: Any Ubuntu Touch device using `QML_DISABLE_DISTANCEFIELD=1`
+
+### 🟡 Garbled Text During Kernel Boot (fbcon)
+- **Status**: **Fixed in v2.2.0**
+- **Description**: `CONFIG_FRAMEBUFFER_CONSOLE=y` (enabled in v2.0.0) causes garbled VT100 text on the framebuffer during early boot.
+- **Fix**: `disable-fbcon.service` unbinds the framebuffer console before any text is rendered. Kernel messages still go to serial (`ttyS0`) for debugging.
+
+---
+
+## Performance Notes (v2.2.0)
+
+### Browser Performance
+- Morph Browser uses QtWebEngine (Chromium), which is inherently heavy on a 2GB device
+- Single renderer process uses ~367MB RAM (down from ~571MB with multiple renderers)
+- CPU usage is high (90-130%) during page rendering — this is a hardware limitation of the quad-core A53
+- YouTube video is software-decoded (no VA-API bridge from Chromium to Android's OMX codecs)
+- VP9 is disabled to force H.264, which decodes ~40% faster in software on ARM
+
+### Alternative: mpv + yt-dlp
+- For YouTube, `yt <url>` plays video through mpv (~30MB RAM vs ~800MB in browser)
+- 720p H.264 by default, with `-l` (360p), `-h` (best), `-a` (audio only) options
+- Much smoother playback since all CPU goes to video decode, not JavaScript/DOM
+
+### Boot Errors
+- The system log shows ~50 "Failed to apply ACL" errors and a few module load failures during boot
+- These are all **pre-existing Ubuntu Touch / halium issues**, not caused by this project
+- They do not affect tablet functionality

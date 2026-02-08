@@ -5,7 +5,7 @@
 [![Kernel](https://img.shields.io/badge/Kernel-4.9.190%2B%20Optimized-brightgreen)](#custom-kernel)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-Performance-optimized Ubuntu Touch for the **Lenovo Tab M8 HD (TB-8505F)** — custom kernel with KSM, ZSWAP, BBR, and more, plus runtime tuning, boot experience improvements, and system-level fixes.
+Performance-optimized Ubuntu Touch for the **Lenovo Tab M8 HD (TB-8505F)** — custom kernel with KSM, ZSWAP, BBR, and more, plus browser/system performance tuning, boot experience improvements, and system-level fixes.
 
 Built on top of [k.nacke's original UBports port](https://gitlab.com/redstar-team/ubports/lenovo-tab-m8).
 
@@ -76,6 +76,18 @@ These apply on top of the custom kernel and don't require recompilation:
 - **Orange state warning removed** — patched LK bootloader
 - **Framebuffer boot status** — renders systemd boot progress on display
 
+### Browser & System Performance (v2.2.0)
+- **QtWebEngine tuning** — single renderer process, JS heap 128MB, GPU memory 64MB, VP9 disabled (H.264 faster on ARM), 4 raster threads, zero-copy rasterization
+- **Browser cache on tmpfs** — 64MB RAM-backed cache for faster page loads
+- **Process priority tuning** — browser/Lomiri nice -5, ksmd nice 19 + idle I/O
+- **Network tuning** — TCP Fast Open, 256KB buffers, no slow start after idle
+- **VM tuning** — swappiness=60, vfs_cache_pressure=200, overcommit=1
+- **CPU governor** — locked to `performance` (all cores at max frequency)
+- **eMMC readahead** — 512KB (up from 128KB)
+- **Boot console disabled** — no garbled fbcon text on display
+- **mpv + yt-dlp** — YouTube outside the browser (~30MB RAM vs ~800MB)
+- **`yt` command** — `yt <youtube-url>` for 720p H.264 playback via mpv
+
 ### Audio Fix
 - **PulseAudio tuning** — larger fragment buffers, disabled timer-based scheduling
 
@@ -100,6 +112,7 @@ These apply on top of the custom kernel and don't require recompilation:
 ├── scripts/
 │   ├── boot_status.py                   # Framebuffer boot status renderer
 │   ├── fix_fonts.sh                     # Fix missing/blank characters (font fix)
+│   ├── optimize_performance.sh          # Browser & system performance optimizations
 │   ├── psi-oom-guard.sh                 # PSI-based OOM killer
 │   ├── install.sh                       # One-shot installer
 │   └── verify.sh                        # Post-install verification
@@ -182,6 +195,7 @@ If the new kernel doesn't boot:
 See [`docs/KNOWN_ISSUES.md`](docs/KNOWN_ISSUES.md). Key issues:
 
 - ~~**Missing/blank characters**~~ — **Fixed in v2.1.0** (Qt distance field rendering bug on PowerVR GPU)
+- **Keyboard text slightly washed out** — cosmetic side effect of the distance field fix (see KNOWN_ISSUES.md)
 - **Audio crackling** — mitigated by PulseAudio tuning in this project
 - **Back camera cloudy** — hardware/driver issue, no fix yet
 - **Tap to wake** — not supported by current kernel
